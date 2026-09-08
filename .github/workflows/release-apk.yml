@@ -1,0 +1,75 @@
+name: Build signed release APK
+
+# Push a tag like v0.1.0 to build a signed APK and attach it to a GitHub
+# Release, or trigger it by hand from the Actions tab. Signing needs these
+# repo secrets (Settings -> Secrets and variables -> Actions):
+#   RELEASE_KEYSTORE_BASE64  - `base64 -w0 jame360-release.jks`
+#   RELEASE_KEYSTORE_PASSWORD
+#   RELEASE_KEY_ALIAS
+#   RELEASE_KEY_PASSWORD
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Decode release keystore
+        run: |
+          echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 -d > "${{ runner.temp }}/jame360-release.jks"
+
+      - name: Compute version name from tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: echo "JAME360_VERSION_NAME=${GITHUB_REF_NAME#v}" >> "$GITHUB_ENV"
+
+      - name: Build signed release APK
+        env:
+          RELEASE_KEYSTORE_PATH: ${{ runner.temp }}/jame360-release.jks
+          RELEASE_KEYSTORE_PASSWORD: ${{ secrets.RELEASE_KEYSTORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+          # versionCode auto-increments off the run number so every build is
+          # "newer" than the last as far as Android's install/update check.
+          JAME360_VERSION_CODE: ${{ github.run_number }}
+        run: ./gradlew assembleRelease --no-daemon
+
+      - name: Remove decoded keystore
+        if: always()
+        run: rm -f "${{ runner.temp }}/jame360-release.jks"
+
+      - name: Rename APK for the release
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/Jame360-${{ github.ref_name }}.apk"
+
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/Jame360-${{ github.ref_name }}.apk
+          generate_release_notes: true
+
+      - name: Upload build artifact
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: jame360-release-apk
+          path: dist/*.apk

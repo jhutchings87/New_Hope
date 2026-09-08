@@ -56,18 +56,46 @@ app/src/main/java/com/jhutchings87/jame360/
 
 ## Building
 
-This was written in a sandbox without the Android SDK, so it has not been
-compiled here — the Gradle wrapper jar isn't checked in for that reason.
-To build it:
+This was written in a sandbox without the Android SDK and without network
+access to Google's Maven repo, so it has not actually been compiled here —
+the Gradle wrapper (`./gradlew`) is checked in and correct, but dependency
+resolution and a real build were never run against it. To build it:
 
-1. Open the project root in Android Studio (Koala or newer). It will offer
-   to regenerate the Gradle wrapper automatically, or run:
-   ```
-   gradle wrapper --gradle-version 8.7
-   ```
-   once if you have a local Gradle install, then use `./gradlew` from then on.
+1. Open the project root in Android Studio (Koala or newer), or run
+   `./gradlew assembleDebug` from a machine with the Android SDK installed.
 2. Sync Gradle, then run the `app` module on a device or emulator running
    Android 8.0+.
+
+## Getting it onto your wife's phone
+
+No Play Store needed. A GitHub Actions workflow
+(`.github/workflows/release-apk.yml`) builds a signed release APK and
+attaches it to a GitHub Release whenever you push a version tag.
+
+**One-time setup:**
+
+1. In the repo, go to Settings → Secrets and variables → Actions and add
+   four repository secrets: `RELEASE_KEYSTORE_BASE64`,
+   `RELEASE_KEYSTORE_PASSWORD`, `RELEASE_KEY_ALIAS`, `RELEASE_KEY_PASSWORD`.
+   The values came with this build — see the keystore file and secrets text
+   file sent alongside this project. Keep both somewhere safe (password
+   manager or an encrypted note); losing the keystore means future updates
+   can't reinstall over the old app without your wife uninstalling first.
+
+**Every time you want to ship a build:**
+
+1. `git tag v0.1.0 && git push origin v0.1.0` (bump the version each time,
+   e.g. `v0.2.0`).
+2. Wait for the "Build signed release APK" workflow to finish (Actions tab),
+   then open the new Release it created — the APK is attached there.
+3. Send her that Release page link (text, email, whatever's easiest).
+4. On her phone, she opens the link, taps the APK to download, then taps the
+   downloaded file to install. Android will prompt to allow installs from
+   that one app (Chrome, Files, Messages — whichever she used) the first
+   time only; after that, an update install just works the same way, no
+   uninstall/reinstall needed as long as the signing key stays the same.
+
+No Play Store account, no review process, no fee.
 
 ## Connecting your servers
 

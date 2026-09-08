@@ -6,6 +6,20 @@ plugins {
     id("kotlin-kapt")
 }
 
+// Release signing comes from environment variables so the keystore itself
+// never has to live in the repo. Set locally for a one-off signed build, or
+// as GitHub Actions secrets for CI (see .github/workflows/release-apk.yml).
+// When unset, the release build type falls back to the debug signing config
+// so `assembleRelease` still produces an installable APK for local testing.
+val releaseKeystorePath: String? = System.getenv("RELEASE_KEYSTORE_PATH")
+val releaseKeystorePassword: String? = System.getenv("RELEASE_KEYSTORE_PASSWORD")
+val releaseKeyAlias: String? = System.getenv("RELEASE_KEY_ALIAS")
+val releaseKeyPassword: String? = System.getenv("RELEASE_KEY_PASSWORD")
+val hasReleaseSigning = !releaseKeystorePath.isNullOrBlank() &&
+    !releaseKeystorePassword.isNullOrBlank() &&
+    !releaseKeyAlias.isNullOrBlank() &&
+    !releaseKeyPassword.isNullOrBlank()
+
 android {
     namespace = "com.jhutchings87.jame360"
     compileSdk = 34
@@ -14,14 +28,30 @@ android {
         applicationId = "com.jhutchings87.jame360"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = (System.getenv("JAME360_VERSION_CODE") ?: "1").toInt()
+        versionName = System.getenv("JAME360_VERSION_NAME") ?: "0.1.0"
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            create("release") {
+                storeFile = file(releaseKeystorePath!!)
+                storePassword = releaseKeystorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
         release {
             isMinifyEnabled = false
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            signingConfig = if (hasReleaseSigning) {
+                signingConfigs.getByName("release")
+            } else {
+                signingConfigs.getByName("debug")
+            }
         }
     }
 
