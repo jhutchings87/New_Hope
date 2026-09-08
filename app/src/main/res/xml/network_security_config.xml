@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Jame360 talks exclusively to servers you configure yourself (NZBGet, Sonarr,
+  Radarr), almost always over a home LAN or VPN on plain HTTP. Cleartext is
+  allowed for all destinations so you are not forced to put a reverse proxy
+  and TLS cert in front of a home server just to use this app.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+</network-security-config>
