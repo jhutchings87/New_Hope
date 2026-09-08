@@ -101,7 +101,7 @@ irreversible thing here.
 You need to give GitHub the signing key so it can stamp the APKs. GitHub
 stores these as "secrets" — encrypted values only the build can read.
 
-1. Open `https://github.com/jhutchings87/New_Hope` in a browser.
+1. Open `https://github.com/jhutchings87/jame360` in a browser.
 2. Click the **Settings** tab (top of the page, on the far right).
 3. In the left sidebar, click **Secrets and variables**, then **Actions**.
 4. Click the green **New repository secret** button. You'll do this four
@@ -134,7 +134,7 @@ That's it. You never touch this part again.
    Version numbers just need to go up: `v0.2.0`, then `v0.3.0`, and so on.
    Reusing a number that already exists will fail, so always pick a new one.
 
-2. Go to `https://github.com/jhutchings87/New_Hope/actions`. You'll see a
+2. Go to `https://github.com/jhutchings87/jame360/actions`. You'll see a
    run named "Build signed release APK" with a yellow dot (running). Wait
    for it to turn into a green check. It takes about 5 minutes. You can
    close the tab and come back.
@@ -144,7 +144,7 @@ That's it. You never touch this part again.
      read the last ~20 lines of red text. That's the error. Nothing was
      shipped, so nothing is broken on anyone's phone.
 
-3. Go to `https://github.com/jhutchings87/New_Hope/releases`. The newest
+3. Go to `https://github.com/jhutchings87/jame360/releases`. The newest
    entry is your version. Under **Assets** there's a file named something
    like `Jame360-v0.2.0.apk`.
 
