@@ -1,6 +1,5 @@
 package com.jhutchings87.jame360.ui.dashboard
 
-import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.jhutchings87.jame360.data.model.ServerProfile
@@ -11,6 +10,8 @@ import com.jhutchings87.jame360.data.nzbget.model.NzbGetStatus
 import com.jhutchings87.jame360.data.repository.ServerRepository
 import com.jhutchings87.jame360.ui.common.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,39 +32,45 @@ data class DashboardData(
 
 @HiltViewModel
 class DashboardViewModel @Inject constructor(
-    savedStateHandle: SavedStateHandle,
     private val serverRepository: ServerRepository,
     private val okHttpClient: OkHttpClient,
     private val json: Json
 ) : ViewModel() {
 
-    private val profileId: String = checkNotNull(savedStateHandle["profileId"])
-
-    private val client: NzbGetClient? by lazy {
-        serverRepository.get(profileId)?.let { NzbGetClient(it, okHttpClient, json) }
-    }
+    private var profileId: String? = null
+    private var pollJob: Job? = null
 
     private val _state = MutableStateFlow<UiState<DashboardData>>(UiState.Loading)
     val state: StateFlow<UiState<DashboardData>> = _state.asStateFlow()
 
-    init {
-        startPolling()
-    }
-
-    private fun startPolling() {
-        viewModelScope.launch {
+    /**
+     * Point the dashboard at an NZBGet server and start polling it. Safe to call
+     * on every recomposition; re-binding only restarts polling when the target
+     * actually changes.
+     */
+    fun bind(profileId: String) {
+        if (this.profileId == profileId && pollJob?.isActive == true) return
+        this.profileId = profileId
+        _state.value = UiState.Loading
+        pollJob?.cancel()
+        pollJob = viewModelScope.launch {
             while (isActive) {
                 refresh()
-                kotlinx.coroutines.delay(REFRESH_INTERVAL_MS)
+                delay(REFRESH_INTERVAL_MS)
             }
         }
     }
 
+    // Resolved per call rather than cached, so edits to the server profile
+    // (host, password) take effect on the next refresh instead of needing a restart.
+    private fun client(): Pair<ServerProfile, NzbGetClient>? {
+        val profile = profileId?.let { serverRepository.get(it) } ?: return null
+        return profile to NzbGetClient(profile, okHttpClient, json)
+    }
+
     fun refresh() {
         viewModelScope.launch {
-            val profile = serverRepository.get(profileId)
-            val nzbGet = client
-            if (profile == null || nzbGet == null) {
+            val (profile, nzbGet) = client() ?: run {
                 _state.value = UiState.Error("Server no longer configured")
                 return@launch
             }
@@ -82,11 +89,7 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun toggleGlobalPause(currentlyPaused: Boolean) {
-        val nzbGet = client ?: return
-        viewModelScope.launch {
-            runCatching { if (currentlyPaused) nzbGet.resumeDownload() else nzbGet.pauseDownload() }
-            refresh()
-        }
+        act { if (currentlyPaused) it.resumeDownload() else it.pauseDownload() }
     }
 
     fun pauseGroup(nzbId: Int) = act { it.pauseGroup(nzbId) }
@@ -94,7 +97,7 @@ class DashboardViewModel @Inject constructor(
     fun deleteGroup(nzbId: Int) = act { it.deleteGroup(nzbId) }
 
     private fun act(block: suspend (NzbGetClient) -> Boolean) {
-        val nzbGet = client ?: return
+        val nzbGet = client()?.second ?: return
         viewModelScope.launch {
             runCatching { block(nzbGet) }
             refresh()

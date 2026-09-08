@@ -20,6 +20,11 @@ object NetworkModule {
         ignoreUnknownKeys = true
         isLenient = true
         coerceInputValues = true
+        // Sonarr/Radarr add-requests rely on fields whose values often equal
+        // the Kotlin default (monitored = true, addOptions, ...). Without this
+        // those keys are dropped from the body and the *arr API rejects or
+        // silently misconfigures the item.
+        encodeDefaults = true
     }
 
     @Provides

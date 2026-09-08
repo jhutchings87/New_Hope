@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
@@ -41,8 +40,6 @@ import com.jhutchings87.jame360.data.model.ServiceType
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ServerListScreen(
-    onOpenDashboard: (String) -> Unit,
-    onOpenCalendar: () -> Unit,
     onAddServer: (ServiceType) -> Unit,
     onEditServer: (String) -> Unit,
     viewModel: ServerListViewModel = hiltViewModel()
@@ -51,18 +48,7 @@ fun ServerListScreen(
     var menuExpanded by remember { mutableStateOf(false) }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Jame360") },
-                actions = {
-                    if (profiles.any { it.type == ServiceType.SONARR || it.type == ServiceType.RADARR }) {
-                        IconButton(onClick = onOpenCalendar) {
-                            Icon(Icons.Default.CalendarMonth, contentDescription = "Upcoming calendar")
-                        }
-                    }
-                }
-            )
-        },
+        topBar = { TopAppBar(title = { Text("Servers") }) },
         floatingActionButton = {
             Box {
                 ExtendedFloatingActionButton(
@@ -96,9 +82,7 @@ fun ServerListScreen(
                 items(profiles, key = { it.id }) { profile ->
                     ServerRow(
                         profile = profile,
-                        onClick = {
-                            if (profile.type == ServiceType.NZBGET) onOpenDashboard(profile.id) else onEditServer(profile.id)
-                        },
+                        onClick = { onEditServer(profile.id) },
                         onDelete = { viewModel.delete(profile) }
                     )
                 }
